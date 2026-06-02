@@ -12,7 +12,7 @@
 
       perSystem = { config, self', inputs', pkgs, system, ... }:
         let
-          python = pkgs.python312;
+          python = pkgs.python313;
 
           # Frontend build
           frontend = pkgs.buildNpmPackage {
