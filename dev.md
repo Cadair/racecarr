@@ -56,7 +56,32 @@ Here’s a concise Docker runbook you can follow now, plus prep for publishing a
 - Notification targets (Apprise/webhook) can be filtered by event; defaults include download-start, download-complete, and download-fail. `/api/notifications/test` bypasses filtering to verify connectivity.
 - Downloader sends (manual and auto) are tagged so polling can emit completion/fail events.
 
-## Frontend notes
+## Sub-path hosting (`BASE_PATH`)
+
+Racecarr can be hosted at a sub-path (e.g. `https://example.com/racecarr`) instead of the domain root by setting the `BASE_PATH` env var at runtime. No image rebuild is required.
+
+- Default: `BASE_PATH=` (empty) — root hosting, today's behavior.
+- Example: `BASE_PATH=/racecarr` — UI at `/racecarr/`, API at `/racecarr/api`, OpenAPI docs at `/racecarr/docs`.
+- The value is normalized: leading slash enforced, trailing slash stripped, bare `/` treated as empty.
+- The frontend reads `window.__BASE_PATH__` injected into `index.html` at serve time and configures the `BrowserRouter` `basename` accordingly.
+- Auth cookie `rc_session` is scoped to `path=/racecarr` (or `path=/` when `BASE_PATH` is empty).
+- Reverse proxy must forward the full path **without stripping** the prefix (the app is path-aware).
+
+### nginx example (no prefix stripping)
+
+```nginx
+# Match /racecarr, /racecarr/, and /racecarr/... — no trailing slash on the location.
+location /racecarr {
+    # Forward the full path; do NOT rewrite or strip /racecarr.
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Real-IP $remote_addr;
+}
+```
+
+Note: no trailing slash on `location /racecarr` and **no** URI path on `proxy_pass`. nginx forwards the request URI verbatim, so a request to `https://example.com/racecarr/api/healthz` reaches the app as `/racecarr/api/healthz`, which is what the path-aware app expects. A bare `https://example.com/racecarr` is handled by FastAPI's trailing-slash redirect to `/racecarr/`.
 - Dashboard: manage seasons, search rounds (cached 24h with Reload), trigger auto-download best per round.
 - Manual Search: freeform query with limit selector, allowlist toggle, raw bypass, and send-to-downloader action.
 - Scheduler: list/create searches, pause/resume, edit downloader/quality/threshold; polling every 15s; optional demo seed when `VITE_ALLOW_DEMO_SEED=true`.

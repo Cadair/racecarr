@@ -1,8 +1,8 @@
+const BASE_PATH = (window as unknown as { __BASE_PATH__?: string }).__BASE_PATH__ || "";
+
 const API_BASE = (() => {
   if (import.meta.env?.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  const origin = window.location.origin;
-  if (origin.includes("8080")) return `${origin}/api`;
-  return "http://localhost:8000/api";
+  return `${window.location.origin}${BASE_PATH}/api`;
 })();
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -11,10 +11,10 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     ...init,
   });
   if (res.status === 401) {
-    window.location.href = "/login";
+    window.location.href = `${BASE_PATH}/login`;
     throw new Error("Unauthorized");
   }
   return res;
 }
 
-export { API_BASE };
+export { API_BASE, BASE_PATH };

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Button, Checkbox, Paper, PasswordInput, Stack, Title } from "@mantine/core";
-import { API_BASE } from "../api";
+import { API_BASE, BASE_PATH } from "../api";
 
 export function Login() {
   const [password, setPassword] = useState("");
@@ -24,7 +24,7 @@ export function Login() {
       }
       if (!res.ok) throw new Error(`Login failed (${res.status})`);
       setPassword("");
-      window.location.href = "/";
+      window.location.href = `${BASE_PATH}/`;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {

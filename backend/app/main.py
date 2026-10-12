@@ -1,9 +1,10 @@
+import json
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from sqlalchemy import inspect, text
-from .core.config import get_settings
+from .core.config import get_settings, normalize_base_path
 from .core.logging_config import configure_logging
 from .core.database import Base, engine, SessionLocal
 from .api.routes import router as api_router
@@ -111,7 +112,13 @@ def create_app() -> FastAPI:
 
     scheduler = SchedulerService(tick_seconds=settings.scheduler_tick_seconds, poll_seconds=settings.scheduler_tick_seconds)
 
-    app = FastAPI(title=settings.app_name)
+    base = settings.base_path
+    app = FastAPI(
+        title=settings.app_name,
+        openapi_url=f"{base}/openapi.json",
+        docs_url=f"{base}/docs",
+        redoc_url=f"{base}/redoc",
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -127,7 +134,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.include_router(api_router, prefix=settings.api_prefix)
+    app.include_router(api_router, prefix=f"{base}{settings.api_prefix}")
 
     app.state.scheduler = scheduler
 
@@ -145,22 +152,29 @@ def create_app() -> FastAPI:
     if static_dir.exists():
         index_path = static_dir / "index.html"
 
-        @app.get("/", include_in_schema=False)
-        async def spa_index():
-            if index_path.exists():
-                return FileResponse(index_path)
-            raise HTTPException(status_code=404)
+        def _render_index() -> HTMLResponse:
+            if not index_path.exists():
+                raise HTTPException(status_code=404)
+            html = index_path.read_text(encoding="utf-8")
+            inject = (
+                "<head>\n"
+                f"  <script>window.__BASE_PATH__ = {json.dumps(base)};</script>\n"
+            )
+            html = html.replace("<head>", inject, 1)
+            return HTMLResponse(html)
 
-        @app.get("/{full_path:path}", include_in_schema=False)
+        @app.get(f"{base}/", include_in_schema=False)
+        async def spa_index():
+            return _render_index()
+
+        @app.get(f"{base}/{{full_path:path}}", include_in_schema=False)
         async def spa_fallback(full_path: str):
             if full_path.startswith("api/"):
                 raise HTTPException(status_code=404)
             candidate = static_dir / full_path
             if candidate.exists() and candidate.is_file():
                 return FileResponse(candidate)
-            if index_path.exists():
-                return FileResponse(index_path)
-            raise HTTPException(status_code=404)
+            return _render_index()
     return app
 
 

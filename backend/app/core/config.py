@@ -1,6 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -10,11 +10,26 @@ DEFAULT_SQLITE_PATH = BASE_DIR / "config" / "data.db"
 DEFAULT_LOG_PATH = BASE_DIR / "config" / "app.log"
 
 
+def normalize_base_path(value: str) -> str:
+    """Normalize a URL base path to '' (root) or '/something' with no trailing slash."""
+    if value is None:
+        return ""
+    cleaned = value.strip().rstrip("/")
+    if not cleaned:
+        return ""
+    if not cleaned.startswith("/"):
+        cleaned = "/" + cleaned
+    if cleaned == "/":
+        return ""
+    return cleaned
+
+
 class Settings(BaseSettings):
     app_name: str = "Racecarr"
     app_version: str = Field("0.1.0", validation_alias="APP_VERSION")
     env: str = Field("development", validation_alias="ENV")
     api_prefix: str = "/api"
+    base_path: str = Field("", validation_alias="BASE_PATH")
     log_level: str = Field("INFO", validation_alias="LOG_LEVEL")
     sqlite_path: Path = Field(default_factory=lambda: DEFAULT_SQLITE_PATH, validation_alias="SQLITE_PATH")
     log_path: Path = Field(default_factory=lambda: DEFAULT_LOG_PATH, validation_alias="LOG_PATH")
@@ -26,6 +41,16 @@ class Settings(BaseSettings):
     auth_session_days: int = Field(1, validation_alias="AUTH_SESSION_DAYS")
     auth_remember_days: int = Field(30, validation_alias="AUTH_REMEMBER_DAYS")
     auth_idle_timeout_minutes: int = Field(60, validation_alias="AUTH_IDLE_TIMEOUT_MINUTES")
+
+    @field_validator("base_path", mode="before")
+    @classmethod
+    def _normalize_base_path(cls, v):
+        return normalize_base_path(v if isinstance(v, str) else (v or ""))
+
+    @property
+    def cookie_path(self) -> str:
+        """Path attribute for auth cookies: scope to base_path when set, else '/'."""
+        return self.base_path or "/"
 
     class Config:
         env_file = ".env"

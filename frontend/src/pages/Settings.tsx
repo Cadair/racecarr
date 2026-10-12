@@ -22,7 +22,7 @@ import {
   Checkbox,
 } from "@mantine/core";
 import { IconCopy } from "@tabler/icons-react";
-import { apiFetch } from "../api";
+import { apiFetch, BASE_PATH } from "../api";
 
 type Indexer = {
   id: number;
@@ -772,7 +772,7 @@ export function Settings() {
     try {
       const res = await apiFetch(`/auth/logout`, { method: "POST" });
       if (!res.ok) throw new Error(`Logout failed (${res.status})`);
-      window.location.href = "/login";
+      window.location.href = `${BASE_PATH}/login`;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {

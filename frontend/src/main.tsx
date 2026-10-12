@@ -7,11 +7,13 @@ import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import App from "./App";
 
+const BASE_PATH = (window as unknown as { __BASE_PATH__?: string }).__BASE_PATH__ || "";
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <MantineProvider defaultColorScheme="dark">
       <Notifications />
-      <BrowserRouter>
+      <BrowserRouter basename={BASE_PATH}>
         <App />
       </BrowserRouter>
     </MantineProvider>

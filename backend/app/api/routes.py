@@ -117,7 +117,7 @@ def require_auth(request: Request, response: Response, session: Session = Depend
         samesite="lax",
         secure=False,
         max_age=settings.auth_remember_days * 24 * 3600,
-        path="/",
+        path=settings.cookie_path,
     )
     return auth_session
 
@@ -327,7 +327,7 @@ def login(payload: AuthLoginRequest, response: Response, session: Session = Depe
         samesite="lax",
         secure=False,
         max_age=max_age,
-        path="/",
+        path=settings.cookie_path,
     )
     log_response("auth_login", ok=True)
     return AuthLoginResponse(ok=True, message="Logged in")
@@ -335,7 +335,8 @@ def login(payload: AuthLoginRequest, response: Response, session: Session = Depe
 
 @router.post("/auth/logout", response_model=AuthLoginResponse)
 def logout(response: Response) -> AuthLoginResponse:
-    response.delete_cookie(COOKIE_NAME, path="/")
+    settings = get_settings()
+    response.delete_cookie(COOKIE_NAME, path=settings.cookie_path)
     log_response("auth_logout")
     return AuthLoginResponse(ok=True, message="Logged out")
 

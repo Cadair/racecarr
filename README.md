@@ -40,6 +40,26 @@ services:
 4) Open http://localhost:8080 (API is at `/api`). Default login: `admin` / `admin` (change in Settings → Security).
 5) In Settings, add your indexer (e.g., nzbgeek) and downloader (e.g., SABnzbd), test both, then search a season and send downloads.
 
+## Host at a sub-path
+
+To serve Racecarr under a path like `https://example.com/racecarr` instead of the domain root, set the `BASE_PATH` env var. No image rebuild is required — the same `mrgibbage/racecarr:latest` image works:
+
+```yaml
+services:
+  app:
+    image: mrgibbage/racecarr:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/config
+    environment:
+      - LOG_LEVEL=INFO
+      - SQLITE_PATH=/config/data.db
+      - BASE_PATH=/racecarr
+```
+
+The app is path-aware: set your reverse proxy to forward the full path **without stripping** the prefix. The UI, API, OpenAPI docs, and auth cookie all relocate under `/racecarr` automatically. Omit `BASE_PATH` (or set it to empty) for root hosting (the default).
+
 ## Notes
 
 - Supports Apprise/webhook notifications; use “Send test” in Settings → Notifications.
